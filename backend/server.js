@@ -1,27 +1,56 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const { connectWithMongoose, testConnection } = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mern_boilerplate';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+// Routes
+app.use('/api/users', require('./routes/users'));
+
 // Connect to MongoDB
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+async function initializeDatabase() {
+  console.log('🔄 Testing MongoDB connection...');
+  await testConnection();
+  console.log('🔄 Connecting with Mongoose...');
+  await connectWithMongoose();
+}
 
 // Basic Route
 app.get('/', (req, res) => {
-  res.send('MERN Backend is running!');
+  res.json({ 
+    message: 'MERN Backend is running!',
+    status: 'success',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    database: 'connected',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await initializeDatabase();
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌐 Server URL: http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
